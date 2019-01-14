@@ -1,0 +1,7 @@
+# Variables related to HAProxy initial confih
+nr_backends: 2
+IP_LAMP1: 172.24.188.156
+IP_LAMP2: 172.24.188.157
+backend_port: 2443
+frontend_port: 8443
+autoscaling_period: 30

@@ -1,0 +1,82 @@
+---
+- hosts: LAMP
+  tasks:
+    - name: Add Hostname
+      shell: hostnamectl set-hostname lamp
+
+    - name: Get Enforce
+      command: getenforce
+      register: result
+
+    - name: Disabling selinux permanently
+      shell: sed -i "s/SELINUX=enforcing/SELINUX=disabled/g" /etc/selinux/config
+      when: result.stdout == "Enforcing"
+      ignore_errors: True
+
+    - name: Update
+      yum: name=* state=latest
+
+    - name: Install Min_Packges
+      yum: name=epel-release,tcpdump,net-tools,telnet,wget,sshpass,dos2unix,zip,unzip state=latest
+
+    - name: Install Apache
+      yum: name=httpd,mod_ssl state=latest
+
+    - name: ssl to Apache
+      template: "src=files/ssl.conf.j2 dest='/etc/httpd/conf.d/ssl.conf' mode=0644"
+
+    - name: non-ssl to Apache
+      template: "src=files/non-ssl.conf.j2 dest='/etc/httpd/conf.d/non-ssl.conf' mode=0644"
+
+    - name: ssl to Apache
+      template: "src=files/testlamp.local.key.j2 dest='/etc/pki/tls/private/testlamp.local.key' mode=0644"
+
+    - name: ssl to Apache
+      template: "src=files/testlamp.local.crt.j2 dest='/etc/pki/tls/certs/testlamp.local.crt' mode=0644"
+
+    - name: Install MariaDB
+      yum: name=mariadb-server state=latest
+
+    - name: Start and enable MariaDB
+      systemd: name=mariadb state=started enabled=yes
+
+    - name: Ansible check input_mysql_secureInstallation.txt exists
+      stat:
+       path: /tmp/input_mysql_secureInstallation.txt
+      register: file_exists
+    
+    - name: Copy input_mysql_secureInstallation
+      template: "src=files/input_mysql_secureInstallation.txt.j2 dest='/tmp/input_mysql_secureInstallation.txt' mode=0644"
+      when: file_exists.stat.exists == false
+
+    - name: Add Password MySQL
+      shell: /bin/bash mysql_secure_installation < /tmp/input_mysql_secureInstallation.txt
+      ignore_errors: True
+      when: file_exists.stat.exists == false
+
+    - name: Install PHP
+      yum: name=php,php-mysql,php-gd,php-pear state=latest
+
+    - name: Install PHPMyADMIN
+      yum: name=phpmyadmin state=latest
+
+    - name: Copy phpMyAdmin Config File
+      template: "src=files/phpMyAdmin.conf.j2 dest='/etc/httpd/conf.d/phpMyAdmin.conf' mode=0644"
+
+    - name: Copy phpMyAdmin config.inc.php
+      template: "src=files/config.inc.php.j2 dest='/etc/phpMyAdmin/config.inc.php' mode=0644"
+
+    - name: Start and enable HTTPD
+      systemd: name=httpd state=started enabled=yes
+
+    - name: Open Firewalld http
+      firewalld: service=http permanent=true state=enabled
+
+    - name: Open Firewalld https
+      firewalld: service=https permanent=true state=enabled
+
+    - name: Open Firewalld backend_port
+      firewalld: port={{ backend_port }}/tcp permanent=true state=enabled
+
+    - name: Firewalld reload
+      shell: firewall-cmd --reload

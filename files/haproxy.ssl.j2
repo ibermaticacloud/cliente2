@@ -1,0 +1,88 @@
+# create new
+
+global
+
+      # for logging section
+
+    log         127.0.0.1 local2 info
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+
+      # max per-process number of connections
+
+    maxconn     256
+
+      # process' user and group
+
+    user        haproxy
+    group       haproxy
+
+      # makes the process fork into background
+
+    daemon
+
+defaults
+
+      # running mode
+
+#    mode               http
+
+      # use global settings
+
+    log                global
+
+      # get HTTP request log
+
+#    option             httplog
+
+      # timeout if backends do not reply
+
+    timeout connect    10s
+
+      # timeout on client side
+
+    timeout client     30s
+
+      # timeout on server side
+
+    timeout server     30s
+
+# define frontend ( set any name for "http-in" section )
+
+frontend http-in
+
+      # listen 80
+
+    bind *:80
+    mode http
+    redirect scheme https if !{ ssl_fc }
+
+    #default_backend    backend_servers
+
+frontend https-in
+
+     bind *:{{ frontend_port }}
+     option tcplog
+     mode tcp
+
+     default_backend    backend_servers
+
+      # send X-Forwarded-For header
+
+# define backend
+
+backend backend_servers
+
+      # balance with roundrobin
+    mode tcp
+    #mode http
+    option ssl-hello-chk
+    #balance first
+    balance roundrobin
+
+      # define backend servers
+
+    server             backend1 {{ IP_LAMP1 }}:{{ backend_port }} check
+    server             backend2 {{ IP_LAMP2 }}:{{ backend_port }} check
+#AQUI
+

@@ -1,0 +1,50 @@
+---
+- hosts: haproxy
+  tasks:
+    - name: Add Hostname
+      shell: hostnamectl set-hostname haproxy
+
+    - name: Get Enforce
+      command: getenforce
+      register: result
+
+    - name: Disabling selinux permanently
+      shell: sed -i "s/SELINUX=enforcing/SELINUX=disabled/g" /etc/selinux/config
+      when: result.stdout == "Enforcing"
+      ignore_errors: True
+
+    - name: Update
+      yum: name=* state=latest
+
+    - name: Install Min_Packges
+      yum: name=epel-release,tcpdump,net-tools,telnet,wget,sshpass,dos2unix,zip,unzip state=latest
+
+    - name: Install haproxy
+      yum: name=haproxy state=latest
+
+    - name: Start and enable haproxy
+      systemd: name=haproxy state=started enabled=yes
+
+    - name: Transfer config files (non-ssl)
+      template: "src=files/haproxy.non-ssl.j2 dest='/etc/haproxy/haproxy.non-ssl' mode=0644"
+
+    - name: Transfer config files (ssl)
+      template: "src=files/haproxy.ssl.j2 dest='/etc/haproxy/haproxy.ssl' mode=0644"
+
+    - name: Configure ssl with group-vars variables
+      command: cp /etc/haproxy/haproxy.ssl /etc/haproxy/haproxy.cfg
+
+    - name: Transfer config files (rsyslog)
+      template: "src=files/rsyslog.conf.j2 dest='/etc/rsyslog.conf' mode=0644"
+
+    - name: Restart haproxy
+      systemd: name=haproxy state=restarted
+
+    - name: Restart rsyslog
+      systemd: name=rsyslog state=restarted
+
+    - name: Open Firewalld frontend_port
+      firewalld: port={{ frontend_port }}/tcp permanent=true state=enabled
+
+    - name: Firewalld reload
+      shell: firewall-cmd --reload

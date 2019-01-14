@@ -1,0 +1,52 @@
+---
+- hosts: MariaDB 
+  tasks:
+    - name: Add Hostname
+      shell: hostnamectl set-hostname mariadb
+
+    - name: Get Enforce
+      command: getenforce
+      register: result
+
+    - name: Disabling selinux permanently
+      shell: sed -i "s/SELINUX=enforcing/SELINUX=disabled/g" /etc/selinux/config
+      when: result.stdout == "Enforcing"
+      ignore_errors: True
+
+    - name: Update
+      yum: name=* state=latest
+
+    - name: Install Min_Packges
+      yum: name=epel-release,tcpdump,net-tools,telnet,wget,sshpass,dos2unix,zip,unzip state=latest
+
+    - name: Install MariaDB
+      yum: name=mariadb-server state=latest
+
+    - name: Start and enable MariaDB
+      systemd: name=mariadb state=started enabled=yes
+
+    - name: Ansible check input_mysql_secureInstallation.txt exists
+      stat:
+       path: /tmp/input_mysql_secureInstallation.txt
+      register: file_exists
+
+    - name: Copy input_mysql_secureInstallation
+      template: "src=files/input_mysql_secureInstallation.txt.j2 dest='/tmp/input_mysql_secureInstallation.txt' mode=0644"
+      when: file_exists.stat.exists == false
+
+    - name: Add Password MySQL
+      shell: mysql_secure_installation < /tmp/input_mysql_secureInstallation.txt
+      ignore_errors: True
+      when: file_exists.stat.exists == false
+
+    - name: Configure BBDD to access remotely from LAMP1
+      shell: mysql --user=root --password=temporal -Bse "use mysql; GRANT ALL  ON *.* TO 'root'@'{{ IP_LAMP1 }}' IDENTIFIED BY 'temporal'; FLUSH PRIVILEGES"
+
+    - name: Configure BBDD to access remotely from LAMP2
+      shell: mysql --user=root --password=temporal -Bse "use mysql;GRANT ALL  ON *.* TO 'root'@'{{ IP_LAMP2 }}' IDENTIFIED BY 'temporal'; FLUSH PRIVILEGES"
+
+    - name: Open Firewalld Mysql_port=3306
+      firewalld: port=3306/tcp permanent=true state=enabled
+
+    - name: Firewalld reload
+      shell: firewall-cmd --reload

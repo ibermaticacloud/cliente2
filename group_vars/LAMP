@@ -1,0 +1,3 @@
+remote_mariadb: 172.24.188.149
+backend_port: 2443
+passwd_mariadb: temporal
