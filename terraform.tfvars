@@ -1,19 +1,8 @@
-
-#####  CREDENTIALS   ######
-#### Add credentials ######
-
-aws_access_key = "<access_key>"
-
-aws_secret_key = "<secretet_key>"
-
-aws_region = "eu-west-1"
-
-
 ##### VPC  #######
 
 ###vpc_cidr_block = "10.0.0.0/16"###
 vpc_cidr_block = "10.5.0.0/16"
-
+aws_region = "eu-west-1"
 
 ######  INSTANCES   #######
 
@@ -37,3 +26,8 @@ route_table_destination_cidr = "0.0.0.0/0"
 ##### PROYECT NAME  #######
 
 Proyect_name = "TestAWS"
+
+
+#####  CREDENTIALS   ######
+#### Add credentials ######
+
